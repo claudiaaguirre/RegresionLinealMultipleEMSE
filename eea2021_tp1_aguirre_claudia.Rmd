@@ -1,0 +1,517 @@
+---
+title: 'TP 1: Regresión Lineal'
+author: "Claudia Roxana Aguirre"
+date: "29 de Octubre, 2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Preparación de datos
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(knitr)
+library(kableExtra)
+library(corrr)
+library(GGally)
+library(ggplot2)
+```
+```{r}
+dt_train = read_csv("encuesta_salud_train.csv") 
+dt_test = read_csv("encuesta_salud_test.csv") 
+dt_train_6 = read_csv("encuesta_salud_modelo6.csv") 
+```
+```{r}
+#Se renombran variables en los datasets de training y testing para facilitar la lectura-
+dt_train <- dt_train %>% rename( nivel_edu = nivel_educativo,
+                     frec_hambre_m = frecuencia_hambre_mensual,
+                     q_comida_rapida = dias_consumo_comida_rapida,
+                     edad_alcohol = edad_consumo_alcohol,
+                     frec_alcohol_d =consumo_diario_alcohol,
+                     act_fisica_s = dias_actividad_fisica_semanal,
+                     frec_frutas_s = consumo_semanal_frutas,
+                     frec_verdura_s = consumo_semanal_verdura,
+                     frec_gaseosas_s = consumo_semanal_gaseosas,
+                     frec_snacks_s = consumo_semanal_snacks,
+                     frec_comida_grasa_s = consumo_semanal_comida_grasa
+                     )
+
+dt_test <- dt_test %>% rename( nivel_edu = nivel_educativo,
+                     frec_hambre_m = frecuencia_hambre_mensual,
+                     q_comida_rapida = dias_consumo_comida_rapida,
+                     edad_alcohol = edad_consumo_alcohol,
+                     frec_alcohol_d =consumo_diario_alcohol,
+                     act_fisica_s = dias_actividad_fisica_semanal,
+                     frec_frutas_s = consumo_semanal_frutas,
+                     frec_verdura_s = consumo_semanal_verdura,
+                     frec_gaseosas_s = consumo_semanal_gaseosas,
+                     frec_snacks_s = consumo_semanal_snacks,
+                     frec_comida_grasa_s = consumo_semanal_comida_grasa
+                     )
+
+dt_train_6 <- dt_train_6 %>% rename( nivel_edu = nivel_educativo,
+                     frec_hambre_m = frecuencia_hambre_mensual,
+                     q_comida_rapida = dias_consumo_comida_rapida,
+                     edad_alcohol = edad_consumo_alcohol,
+                     frec_alcohol_d =consumo_diario_alcohol,
+                     act_fisica_s = dias_actividad_fisica_semanal,
+                     frec_frutas_s = consumo_semanal_frutas,
+                     frec_verdura_s = consumo_semanal_verdura,
+                     frec_gaseosas_s = consumo_semanal_gaseosas,
+                     frec_snacks_s = consumo_semanal_snacks,
+                     frec_comida_grasa_s = consumo_semanal_comida_grasa
+                     )
+```
+# Análisis exploratorio
+### Estructura y variables
+
+El archivo de training tiene _7024_ filas y _16_ columnas. 
+Las variables con las que se van a trabajar contienen los siguientes datos:
+
+* __consumo_diario_alcohol__ (medido en tragos): (0.0, 0.5, 1.0, 2.0, 3.0, 4.0 y 5.0).
+
+* __dias_actividad_fisica_semanal__: (0, 1, 2, 3, 4, 5, 6, 7)
+
+* __dias_consumo_comida_rapida__: (0, 1, 2, 3, 4, 5, 6, 7)
+
+* __edad__: (12, 13, 14, 15, 16, 17, 18)
+
+* __altura__: (de 125  a 200) 
+
+* __peso__: (de 27 a 144)
+
+* __genero__: (Femenino", "Masculino)
+
+* __nivel_educativo__: (1er año/10mo grado nivel Polimodal o 3er año nivel Secundario, 2do año/11vo grado nivel Polimodal o 4to año nivel Secundario,
+3er año/12vo grado nivel Polimodal o 5to año nivel Secundario, 8vo grado nivel Primario/Polimodal o 1er año nivel Secundario,9no grado nivel Primario/Polimodal o 2do año nivel Secundario, Dato perdido).
+
+* __frecuencia_hambre_mensual__: (Algunas veces, Casi siempre, Dato perdido, Nunca, Rara vez, Siempre)
+
+* __edad_consumo_alcohol__: (10 o 11 años, 12 o 13 años, 14 o 15 años, 16 o 17 años, 18 años o más, 7 años o menos, 8 o 9 años, Nunca tomé alcohol más que unos pocos sorbos)
+
+* __consumo_semanal_frutas__: (1 a 3 veces durante los últimos 7 días, 1 vez al día, 2 veces al día, 3 veces al día, 4 a 6 veces durante los últimos 7 días, 4 o más veces al día, Dato perdido, No comí frutas durante los últimos 7 días)
+
+* __consumo_semanal_verdura__: (1 a 3 veces durante los últimos 7 días, 1 vez al día, 2 veces al día, 3 veces al día, 4 a 6 veces durante los últimos 7 días, 4 o más veces al día, Dato perdido, No comí verduras ni hortalizas durante los últimos 7 días)
+
+* __consumo_semanal_gaseosas__: (1 a 3 veces durante los últimos 7 días, 1 vez al día, 2 veces al día, 3 veces al día, 4 a 6 veces durante los últimos 7 días, 4 o más veces al día, Dato perdido, No tomé gaseosas en los últimos 7 días)
+
+* __consumo_semanal_snacks__: (1 a 3 veces durante los últimos 7 días, 1 vez al día, 2 veces al día, 3 veces al día, 4 a 6 veces durante los últimos 7 días, 4 o más veces al día, Dato perdido, No comí comida salada o snacks en los últimos 7 días)
+
+* __consumo_semanal_comida_grasa__: (1 a 3 veces durante los últimos 7 días, 1 vez al día, 2 veces al día, 3 veces al día, 4 a 6 veces durante los últimos 7 días, 4 o más veces al día, Dato perdido, No comí comida alta en grasa en los últimos 7 días)
+
+Como variables numéricas están: __altura__ y __peso__.
+Luego __consumo_diario_alcohol__, __dias_actividad_fisica_semanal__, __dias_consumo_comida_rapida__ y __edad__ contienen valores discretos y acotados al dominio, por lo que se podrían considerar categóricas.
+El resto de las variables son todas categóricas.
+
+```{r}
+dt_train %>% glimpse()
+```
+### Correlación entre variables numéricas 
+```{r}
+dt_train %>% select(edad, altura, peso,frec_alcohol_d, act_fisica_s, q_comida_rapida) %>%
+  correlate() %>% rplot()
+```
+
+```{r}
+# Correlación entre variables numéricas (las más significativas)
+cor(dt_train$peso, dt_train$edad)
+cor(dt_train$peso, dt_train$altura)
+cor(dt_train$peso, dt_train$q_comida_rapida)
+cor(dt_train$peso, dt_train$frec_alcohol_d)
+cor(dt_train$peso, dt_train$act_fisica_s)
+cor(dt_train$altura, dt_train$edad)
+cor(dt_train$frec_alcohol_d, dt_train$edad)
+```
+En cuanto a las correlaciones, la más alta es entre __peso__ y __altura__ con 0.5759839, luego le sigue la __edad__ y __peso__ con 0.2846795. Finalmente __altura__ y __edad__ con 0.2539131 y __frec_alcohol_d__ y __edad__ con 0.2288491, siendo todas asociaciones lineales positivas.
+
+### Apertura por género
+```{r}
+dt_train %>% 
+  select(genero,edad, altura, frec_alcohol_d, act_fisica_s, q_comida_rapida, peso) %>% 
+  mutate(genero = factor(genero)) %>%  
+  ggpairs(., mapping = aes(colour = genero), title = "Matriz de correlaciones",
+          upper = list(continuous = wrap("cor", size = 3, hjust=0.6)), legend = 25, progress=FALSE) + 
+  theme(axis.text.x = element_text(angle=45, vjust=0.5), legend.position = "bottom") +
+  theme_bw() 
+```
+
+```{r}
+ggplot(data = dt_train, aes(x = peso, y= altura, color = genero)) +
+  geom_point(alpha = 0.75) + 
+  labs(title = "Peso y Altura por género") + 
+  theme(legend.position = 'none') + 
+  facet_wrap(~ genero)
+
+ggplot(data = dt_train, aes(x = peso, y= edad, color = genero)) +
+  geom_point(alpha = 0.75) + 
+  labs(title = "Peso y Edad por género") + 
+  theme(legend.position = 'none') + 
+  facet_wrap(~ genero)
+
+ggplot(data = dt_train, aes(x = altura, y= edad, color = genero)) +
+  geom_point(alpha = 0.75) + 
+  labs(title = "Altura y Edad por género") + 
+  theme(legend.position = 'none') + 
+  facet_wrap(~ genero)
+
+ggplot(data = dt_train, aes(x = frec_alcohol_d, y= edad, color = genero)) +
+  geom_point(alpha = 0.75) + 
+  labs(title = "Frecuencia de alcohol diario y Edad por género") + 
+  theme(legend.position = 'none') + 
+  facet_wrap(~ genero)
+```
+
+En el caso de la relación entre __peso__ y __altura__ según el __género__, se observa que los hombres alcanzan mayores alturas y mayores pesos que las mujeres.
+Además en algunos casos las mujeres tienen mayor peso que los hombres dada la misma altura.
+Luego, como se comentó anteriormente, tanto la __edad__ como la __frecuencia_alcohol_diaria__ están discretizadas, viendose barras más que una nube de puntos.
+
+### Hambre mensual, consumo semanal de verdura y consumo semanal de comida grasa
+
+```{r}
+ggplot(dt_train, aes(x= frec_hambre_m, fill= frec_verdura_s)) +
+  geom_bar(aes(y = (..count..)/sum(..count..))) +
+  labs(title = "Distribución de Frecuencia de Hambre",
+       subtitle = "(Subdividido por consumo de verdura)") + 
+  guides(fill = guide_legend(title = "Verduras")) +
+  scale_x_discrete("Hambre") + 
+  scale_y_continuous("", labels=scales::percent) +
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))
+```
+```{r}
+ggplot(dt_train, aes(x= frec_hambre_m, fill= frec_comida_grasa_s)) +
+  geom_bar(aes(y = (..count..)/sum(..count..))) +
+  labs(title = "Distribución de Frecuencia de Hambre",
+       subtitle = "(Subdividido por consumo de comida grasa)") + 
+  guides(fill = guide_legend(title = "Comidas grasas")) +
+  scale_x_discrete("Hambre") + 
+  scale_y_continuous("", labels=scales::percent) +
+  theme(axis.text.x = element_text(angle = 70, hjust = 1))
+```
+
+La gran mayoría, "nunca" paso hambre, siguiéndoles los que "rara vez" pasaron hambre y finalmente los que "algunas veces" pasaron hambre. Las demás categorías ("casi siempre", "dato perdido" y "siempre") contienen muy pocas personas.
+
+Ahora bien, si observamos dichas categorías relacionadas al consumo de verduras, se observa que gran parte consume verduras en mayor o menor medida, siendo la opción ganadora de “1 a 3 veces  en los últimos 7 días” y siguiéndole de “4 a 6 veces  en los últimos 7 días” para las categorías “nunca” y “rara vez”, mientras que para “algunas veces” hay un empate entre ellas.
+
+Por último, si observamos dichas categorías relacionadas al consumo de comidas grasas, vemos que para las categorías “nunca”, “rara vez” y “algunas veces” la opción ganadora de consumo de grasas se da de “1 a 3 veces en los últimos 7 días”. 
+Luego en el caso de “nunca” la opción siguiente es “no comió grasas en los últimos 7 días”, mientras que en “rara vez” y “algunas veces” hay un empate entre “4 a 6 veces en los últimos 7 días” versus “no comió grasas en los últimos 7 días”. 
+
+Finalmente, gran parte de las personas comen igual frecuencia de verduras y comidas grasas (1 a 3 veces durante los últimos 7 días).
+
+# Modelo Inicial
+```{r}
+modelo_inicial = lm(formula = peso ~ altura + edad + genero + act_fisica_s + frec_alcohol_d, data= dt_train)
+tidy_modelo_inicial <- tidy(modelo_inicial, conf.int = TRUE)
+tidy_modelo_inicial
+```
+### Coeficientes estimados
+#### Interpretación
+* __Intercept:__ (Categoría basal de la variable categórica) El valor del coeficiente estimado es la media del peso para personas sin altura, sin edad con 0 actividad física semanal y con 0 consumo de alcohol diario. 
+En este modelo es -68.922688070 kilogramos, lo cual no tiene sentido ya que una persona debería tener al menos altura y edad. Además no podría tener un peso negativo.
+
+* __generoMasculino:__ El valor del coeficiente estimado es la diferencia en los niveles medios del género masculino respecto al género femenino (categoría basal). Es decir, este coeficiente = 1.262643558 indica cuanto más alto es el peso para el género masculino respecto del género femenino (categoría basal), dado una altura, una edad,una actividad física semanal y un consumo de alcohol diario.
+
+* __Altura:__ El coeficiente estimado es 0.650606544 kilogramos, lo que indica que si mantenemos la edad, el género,la actividad física semanal y el consumo de alcohol diario constantes, cada incremento adicional de un centímetro de altura corresponde a un aumento de 0.650606544 kilogramos, en promedio en el peso de la persona.  
+
+* __Edad:__ El coeficiente estimado es 1.406727060 kilogramos, lo que indica que si mantenemos la altura, el genero, la actividad física semanal y el consumo de alcohol diario constantes, cada incremento adicional de un año en la edad corresponde a un aumento de 1.406727060 kilogramos, en promedio en el peso de la persona.  
+
+* __act_fisica_s:__ El coeficiente estimado es -0.087391031 kilogramos, lo que indica que si mantenemos la altura, el genero,la edad y el consumo de alcohol diario constantes, cada incremento adicional de un día de actividad física corresponde a una disminución de 0.087391031 kilogramos, en promedio en el peso de la persona.  
+
+* __frec_alcohol_d:__ El coeficiente estimado es 0.007271379 kilogramos, lo que indica que si mantenemos la altura, el genero, la edad y la actividad física semanal constantes, cada incremento adicional de un trago corresponde a un aumento de 0.007271379 kilogramos, en promedio en el peso de la persona.
+
+#### Significatividad
+Se observa que las variables _altura_, _edad_ y _genero masculino_ resultan estadísticamente significativas para explicar el peso de las personas (p-valores < 0.05, resultado de aplicar el test t). Además, se puede apreciar que los intervalos de confianza (IC) del 95% de dichas variables no contienen al 0.
+Por otro lado, las variables _actividad física semanal_ y _consumo de alcohol diario_ no resultan estadísticamente significativas (p-valores > 0.05 y sus ICs conteniendo al 0).
+
+La tabla de ANOVA muestra que, según el resultado del test F, la variable __genero__ en su conjunto resulta estadísticamente significativa para explicar el peso (p-valor < 0.05)
+```{r}
+tidy(anova(modelo_inicial))
+```
+Observando el resultado del test-F (Test de significatividad global) vemos que el modelo si resulta significativo para explicar el peso (P-valor < 0.05).  
+Además, el modelo logra explicar una variablidad del 35.2 %, observando el _R^2^ ajustado_ 
+```{r}
+glance(modelo_inicial)
+```
+# Modelo categóricas
+```{r}
+dt_train_1 = dt_train
+#Se cambia la categoría basal
+dt_train_1 <- dt_train_1 %>% mutate(frec_snacks_s = as.factor(frec_snacks_s))
+dt_train_1 <- dt_train_1 %>% mutate(frec_snacks_s = relevel(frec_snacks_s, ref = "No comí comida salada o snacks en los últimos 7 días"))
+
+#Se crea un modelo con interación entre edad y género.
+modelo_interacion = lm(formula = peso ~ altura + frec_snacks_s + genero*edad, data= dt_train_1)
+tidy_modelo_interaccion <- tidy(modelo_interacion, conf.int = TRUE) %>%  arrange(p.value)
+tidy_modelo_interaccion
+```
+### Coeficientes estimados
+#### Interpretación
+##### consumoSemanalSnacks
+* __frec_snacks_s1 a 3 veces durante los últimos 7 días: __ El coeficiente estimado muestra cuando disminuye (1.35163 kilogramos) el peso medio para aquellas personas que comen snacks de 1 a 3 veces respecto de aquellos que no comieron snacks en los ultimos 7 días (categoría basal), dada la altura, edad y genero. 
+
+* __frec_snacks_s1 vez al día: __ El coeficiente estimado muestra cuando disminuye (0.60788 kilogramos) el peso medio para aquellas personas que comen snacks de 1 vez al día respecto de aquellos que no comieron snacks en los ultimos 7 días (categoría basal), dada la altura, edad y genero. 
+
+* __frec_snacks_s2 veces al día: __ El coeficiente estimado muestra cuando disminuye (1.09466 kilogramos) el peso medio para aquellas personas que comen snacks de 2 veces al día respecto de aquellos que no comieron snacks en los ultimos 7 días (categoría basal), dada la altura, edad y genero. 
+
+* __frec_snacks_s3 veces al día: __ El coeficiente estimado muestra cuando disminuye (1.27596 kilogramos) el peso medio para aquellas personas que comen snacks de 3 veces al día respecto de aquellos que no comieron snacks en los ultimos 7 días (categoría basal), dada la altura, edad y genero. 
+
+* __frec_snacks_s4 a 6 veces durante los últimos 7 días: __ El coeficiente estimado muestra cuando disminuye (2.27004 kilogramos) el peso medio para aquellas personas que comen snacks de 4 a 6 veces durante los últimos 7 días respecto de aquellos que no comieron snacks en los ultimos 7 días (categoría basal), dada la altura, edad y genero. 
+
+* __frec_snacks_s4 o más veces al día: __: El coeficiente estimado muestra cuando disminuye (2.56697 kilogramos) el peso medio para aquellas personas que comen snacks de 4 o más veces al día respecto de aquellos que no comieron snacks en los ultimos 7 días (categoría basal), dada la altura, edad y genero. 
+
+* __frec_snacks_sDato perdido: __ El coeficiente estimado muestra cuando disminuye (4.44042 kilogramos) el peso medio para aquellas personas que no completaron la opción respecto de aquellos que no comieron snacks en los ultimos 7 días (categoría basal), dada la altura, edad y genero. 
+
+En el caso de la variable __consumoSemanalSnacks__, se observa que algunos tipos de consumo de snacks resultan estadísticamente significativos para explicar el peso (p-valores < 0.05) mientras otros tipos de consumo no ( __frec_snacks_s1 vez al día__, __frec_snacks_s2 veces al día__ y __frec_snacks_s3 veces al día__). Lo mismo se observa a través de los intervalos de confianza del 95%, donde algunos contienen al cero y otros no. Se chequea si los valores medios del peso de las personas son los mismos para los distintos tipos de consumo de snacks respecto del tipo __"No comí comida salada o snacks en los últimos 7 días"__  (categoría basal). 
+
+##### genero.edad
+Como la variable __generoMasculino__ asume solamente valores 0 y 1, el termino de la interacción __generoMasculino:edad__ valdrá 0 si __generoMasculino__ = 0 (o sea para las mujeres) y será igual a __edad__ siempre que __generoMasculino__ = 1 (o sea para los hombres).
+
+* __edad__: El coeficiente estimado es la pendiente de la edad en el grupo de mujeres. Indica que por cada aumento en 1 unidad de la edad entre las mujeres, el peso medio aumenta 1.22 unidades. 
+
+* __generoMasculino:edad__: El coeficiente estimado representa el aumento en 0.39 de la pendiente en el grupo de hombres con respecto al de las mujeres. 
+
+
+La interacción __generoMasculino:edad__ resulta estadísticamente significativa (p-valor < 0.05), es decir que la edad tiene un efecto diferente en el peso dependiendo del género de la persona. Notar que la variable __generoMasculino__ deja de ser significativa.
+
+Este modelo logra explicar una variablidad del 35.6%
+```{r}
+glance(modelo_interacion)
+```
+
+### Variable consumoSemanalSnacks
+#### Evaluación de significatividad conjunta
+```{r}
+tidy(anova(modelo_interacion))
+```
+La tabla de ANOVA muestra que, según el resultado del test F, la variable __frec_snacks_s__ en su conjunto resulta estadísticamente significativa para explicar al peso (p-valor < 0.05). Es decir, que pese a que algunas categorías en su comparación individual con la categoría basal sean poco significativas, la variable en su conjunto sí resulta significativa para el modelo.
+
+#### Redefinición de las categorías:
+Teniendo en cuenta que las siguientes categorías no son significativas: __frec_snacks_s1 vez al día__, __frec_snacks_s2 veces al día__ y __frec_snacks_s3 veces al día__, se propone un nuevo agrupamiento para la variable __frec_snacks_s__.
+Luego, todas las categorías siguen igual, salvo __frec_snacks_s1 vez al día__, __frec_snacks_s2 veces al día__, __frec_snacks_s3 veces al día__ y __4 a 6 veces durante los últimos 7 días__ que son incluidas en una única nueva categoría __"Todos los días en los últimos 7 días"__.
+La clasificación original usaba por un lado como referencia los "ultimos 7 días", pero además incluía demasiado detalle al suponer que la persona comía todos los días snacks (1, 2, 3, 4 o 6 veces al día durante los ultimos 7 días). Entonces se decide una categorización más homogenea.   
+
+```{r}
+nueva_categoria = "Todos los días en los últimos 7 días"
+# Se agrega la nueva agrupación de categorías en una nueva variable "frec_snacks_s_v2", tanto para el dataset de training como para el dataset de testing.
+
+dt_train_2 <- dt_train_1 %>% 
+  mutate(frec_snacks_s_v2 = case_when(frec_snacks_s == "1 vez al día" ~ nueva_categoria,
+                frec_snacks_s == "2 veces al día" ~ nueva_categoria,
+                frec_snacks_s == "3 veces al día" ~ nueva_categoria,
+                frec_snacks_s == "4 o más veces al día" ~ nueva_categoria,
+                frec_snacks_s == "No comí comida salada o snacks en los últimos 7 días" ~  "No comí comida salada o snacks en los últimos 7 días",
+                frec_snacks_s == "1 a 3 veces durante los últimos 7 días" ~ "1 a 3 veces durante los últimos 7 días",
+                frec_snacks_s == "4 a 6 veces durante los últimos 7 días" ~ "4 a 6 veces durante los últimos 7 días" ,
+                frec_snacks_s == "Dato perdido" ~ "Dato perdido" ))
+
+
+dt_test_2 <- dt_test %>% 
+  mutate(frec_snacks_s_v2 = case_when(frec_snacks_s == "1 vez al día" ~ nueva_categoria,
+                frec_snacks_s == "2 veces al día" ~ nueva_categoria,
+                frec_snacks_s == "3 veces al día" ~ nueva_categoria,
+                frec_snacks_s == "4 o más veces al día" ~ nueva_categoria,
+                frec_snacks_s == "No comí comida salada o snacks en los últimos 7 días" ~  "No comí comida salada o snacks en los últimos 7 días",
+                frec_snacks_s == "1 a 3 veces durante los últimos 7 días" ~ "1 a 3 veces durante los últimos 7 días",
+                frec_snacks_s == "4 a 6 veces durante los últimos 7 días" ~ "4 a 6 veces durante los últimos 7 días" ,
+                frec_snacks_s == "Dato perdido" ~ "Dato perdido" ))
+```
+
+Notar que ahora cada categoria de __frec_snacks_s2__ resulta estadisticamente significativa (p-valores < 0.05)
+```{r}
+#Se cambia la categoria basal
+dt_train_2 <- dt_train_2 %>% 
+  mutate(frec_snacks_s_v2 = as.factor(frec_snacks_s_v2))  %>% 
+  mutate(frec_snacks_s_v2 = relevel(frec_snacks_s_v2, ref = "No comí comida salada o snacks en los últimos 7 días"))
+
+modelo_interacion_2 = lm(formula = peso ~ altura + frec_snacks_s_v2 + genero*edad, data= dt_train_2)
+tidy_modelo_interaccion_2 <- tidy(modelo_interacion_2, conf.int = TRUE) %>%  arrange(p.value)
+tidy_modelo_interaccion_2
+```
+Luego, se mantiene la variabilidad explicada en 35.6%.
+```{r}
+glance(modelo_interacion_2)
+```
+# Modelos propios y evaluación
+### Creación de 2 modelos múltiples adicionales
+#### Modelo 1 propuesto
+Se decide probar con todas las variables para aprovechar toda la información con que se cuenta.
+```{r}
+modelo_propuesto_1 = lm(formula = peso ~ altura + edad + genero + nivel_edu + frec_hambre_m + q_comida_rapida + edad_alcohol + frec_alcohol_d + act_fisica_s + frec_frutas_s + frec_verdura_s + frec_gaseosas_s + frec_snacks_s + frec_comida_grasa_s, data= dt_train)
+```
+#### Modelo 2 propuesto
+Se observa que las personas que nunca pasaron hambre son 4844 mientras que el resto de las categorías suma 2180, por eso se decide crear la variable __paso_hambre__ indicando si paso o no hambre en el último mes.
+```{r}
+dt_train %>% group_by(frec_hambre_m) %>% count()
+```
+```{r}
+#Cambiar la variable "frec_hambre_m" por "paso_hambre" (pasó hambre en el último mes) .
+dt_train_propuesta_2 = dt_train %>% 
+  mutate(paso_hambre = case_when(frec_hambre_m == "Nunca" ~ "No",
+                                 frec_hambre_m == "Algunas veces" ~ "Si",
+                                 frec_hambre_m == "Casi siempre" ~ "Si",
+                                 frec_hambre_m == "Dato perdido" ~ "Dato perdido",
+                                 frec_hambre_m == "Rara vez" ~ "Si",
+                                 frec_hambre_m == "Siempre" ~ "Si"))
+
+dt_test_propuesta_2 = dt_test %>% 
+  mutate(paso_hambre = case_when(frec_hambre_m == "Nunca" ~ "No",
+                                 frec_hambre_m == "Algunas veces" ~ "Si",
+                                 frec_hambre_m == "Casi siempre" ~ "Si",
+                                 frec_hambre_m == "Dato perdido" ~ "Dato perdido",
+                                 frec_hambre_m == "Rara vez" ~ "Si",
+                                 frec_hambre_m == "Siempre" ~ "Si"))
+```
+
+```{r}
+modelo_propuesto_2 = lm(formula = peso ~ altura + edad + genero + paso_hambre, data= dt_train_propuesta_2)
+```
+### Evaluación de la performance de los modelos
+#### En training
+```{r}
+#Se arman listas de los modelos
+modelos <- list(modelo_ini = modelo_inicial, modelo_interac_2 = modelo_interacion_2, modelo_prop_1 = modelo_propuesto_1, modelo_prop_2 = modelo_propuesto_2)
+#Se calculan las métricas para todos los modelos
+purrr::map_df(modelos, broom::glance, .id = "modelo") %>% arrange(desc(adj.r.squared))
+```
+De los 4 modelos, el que mejor permite medir el porcentaje de variabilidad explicada del peso es el _modelo  propuesto 1_ con un _R^2^ ajustado_ de 0.3608120 (aunque su diferencia con el siguiente  _modelo categóricas_ es solo de 0.0033).  
+
+```{r}
+#Se aplica función augment -para predecir el peso- para los modelos incluidos en la lista.
+lista_pred_training = map(.x = modelos, .f = augment)
+#Se obtiene el R cuadrado, RMSE y MAE para los modelos incluidos en la lista.
+map_dfr(.x = lista_pred_training, .f = metrics, truth = peso, estimate = .fitted, .id="modelo") %>% arrange(.estimate)
+```
+ Luego el modelo que tiene menor _MAE_ (7.3946489) y _RMSE_ (9.8198125) sigue siendo el _modelo  propuesto 1_ y el que le sigue es el _modelo categóricas_
+
+#### En testing
+```{r}
+#Modelo inicial
+pred_modelo_ini_test = augment(modelo_inicial, newdata = dt_test)
+metrics(data = pred_modelo_ini_test, truth = peso, estimate= .fitted)
+#Modelo categóricas con variable con categoría __consumoSemanalSnacks__ redefinida
+pred_modelo_interac_2_test = augment(modelo_interacion_2, newdata = dt_test_2)
+metrics(data = pred_modelo_interac_2_test, truth = peso, estimate= .fitted)
+#Modelo propuesto 1
+pred_modelo_propuesto1_test = augment(modelo_propuesto_1, newdata = dt_test)
+metrics(data = pred_modelo_propuesto1_test, truth = peso, estimate= .fitted)
+#Modelo propuesto 2
+pred_modelo_propuesto2_test = augment(modelo_propuesto_2, newdata = dt_test_propuesta_2)
+metrics(data = pred_modelo_propuesto2_test, truth = peso, estimate= .fitted)
+```
+El _MAE_ más bajo lo tiene el _modelo propuesto 1_ con 7.5561039 (pero con el modelo siguiente _modelo categóricas_ solo tiene una diferencia de 0.0013), mientras que el _RSME_ más bajo lo tiene el _modelo categóricas_ con 10.1861909.
+```{r}
+#Cálculo de R cuadrado ajustado (https://statologos.jaol.net/r-ajustado-al-cuadrado-en-r/)
+adjusted_r2 <- function (modelo,r.squared,nro_obs) {
+    return (1 - ((1-r.squared) * ( nro_obs -1) / (nro_obs - length(modelo$coefficients) -1)))
+}
+```
+
+```{r}
+adjusted_r2(modelo_inicial, 0.3433755, nrow(dt_test))
+adjusted_r2(modelo_interacion_2, 0.3467361, nrow(dt_test_2))
+adjusted_r2(modelo_propuesto_1, 0.3428871, nrow(dt_test))
+adjusted_r2(modelo_propuesto_2, 0.3426815, nrow(dt_test_propuesta_2))
+```
+En el caso del _R^2^ ajustado_ el valor de mayor variabilidad se obtiene con el _modelo categóricas_
+
+Finalmente el mejor modelo para predecir el peso es el _modelo categóricas_ , ya que fue el que mejores métricas devolvió utilizando el dataset de testing. Es decir, evaluando sobre datos que nunca habia visto.
+
+# Diagnóstico del modelo
+Análisis de los supuestos del modelo lineal para el __modelo inicial__
+
+```{r}
+plot(modelo_inicial)
+```
+
+__Residuos versus valores predichos:__ No parece existir una estructura clara de datos, por lo que se podría decir que se cumple el supuesto de homocedasticidad.
+
+__Normal QQ plot:__ El extremo superior derecho no se ajusta a la distribución teórica (∼N(0,1)), por lo que no parece seguir una distribución normal.
+
+__Residual versus leverage:__ El leverage mide cuan influentes son los puntos en el modelo. En este gráfico algunas observaciones aparecen bastante separadas, indicando un alto leverage. El gráfico destaca las observaciones 6818, 2094 y 93. Significa que estas observaciones cambian mucho al modelo.
+
+__Diagnóstivo del modelo:__ El modelo no cumple con los supuestos del modelo lineal. Parecen existir 2 problemas: falta de normalidad y la presencia de observaciones con alto leverage.
+
+# Modelo robusto
+Se incorporan al dataset original de train algunas observaciones adicionales que pueden incluir valores atípicos. Se quiere observar en particular la relación entre peso y altura:
+```{r}
+ggplot(data = dt_train, aes(x = peso, y= altura)) +
+  geom_point(alpha = 0.75) + 
+  labs(title = "Peso y Altura (Modelo original)") + 
+  theme(legend.position = 'none') 
+
+ggplot(data = dt_train_6, aes(x = peso, y= altura)) +
+  geom_point(alpha = 0.75) + 
+  labs(title = "Peso y Altura (Modelo con posibles outliers)") + 
+  theme(legend.position = 'none') 
+```
+
+Cambia la relación entre el peso y la altura. En el dataset con posibles outliers las personas (según peso y altura) se dividen en 2 grupos, uno más denso donde a mayor peso crece más rápidamente la altura que con el dataset original y otra agrupación adicional de puntos hacia la derecha con pesos más grandes que no existían en el dataset original.  
+
+### Entrenamiento del modelo inicial con nuevos datos.
+```{r}
+modelo_inicial_con_outliers = lm(formula = peso ~ altura + edad + genero + act_fisica_s + frec_alcohol_d, data= dt_train_6)
+tidy_modelo_inicial_con_outliers  <- tidy(modelo_inicial_con_outliers, conf.int = TRUE)
+```
+### Comparación de coeficientes (modelo inicial entrenado con nuevos datos versus con el set de datos original)
+```{r}
+tidy_modelo_inicial_con_outliers 
+tidy_modelo_inicial
+```
+En cuanto a los coeficientes, si bien los valores estimados y sus errores standard cambian, no se producen grandes saltos. Además, siguen siendo estadísticamente significativos los mismos coeficientes en ambos modelos.
+
+### Comparación de métricas (modelo inicial entrenado con nuevos datos versus con el set de datos original)
+```{r}
+pred_modelo_ini_con_outliers = augment(modelo_inicial_con_outliers, newdata = dt_train_6)
+metrics(data = pred_modelo_ini_con_outliers, truth = peso, estimate= .fitted)
+
+pred_modelo_ini_ori = augment(modelo_inicial, newdata = dt_train)
+metrics(data = pred_modelo_ini_ori, truth = peso, estimate= .fitted)
+```
+El _RMSE_ del _modelo original_ es de 9.9101379 y el _MAE_ es de 7.4552017, ambos menores que el del _modelo con outliers_.
+
+```{r}
+glance(modelo_inicial_con_outliers)
+glance(modelo_inicial)
+```
+El _R^2^ ajustado_ del _modelo inicial_  logra explicar una variabilidad en un 35.4% mientras que el _modelo con outliers_ solo logra explicar el 27.2%.
+Todas las métricas dan mejor para el _modelo original_
+
+### Entrenamiento con un modelo robusto.
+```{r}
+library(robustbase)
+
+modelo_inicial_robusto = lmrob(formula = peso ~ altura + edad + genero + act_fisica_s + frec_alcohol_d, data= dt_train_6)
+tidy_modelo_inicial_robusto  <- tidy(modelo_inicial_robusto, conf.int = TRUE)
+```
+### Comparación de coeficientes (Robusto y no Robusto)
+```{r}
+tidy_modelo_inicial_con_outliers
+tidy_modelo_inicial_robusto
+```
+En cuanto a los coeficientes, si bien los valores estimados y sus errores standard cambian, no se producen grandes saltos. Además, siguen siendo estadísticamente significativos los mismos coeficientes en ambos modelos.
+
+### Comparación de performance (Robusto y no Robusto)
+```{r}
+pred_modelo_inicial_robusto = augment(modelo_inicial_robusto, newdata = dt_train_6)
+metrics(data = pred_modelo_ini_con_outliers, truth = peso, estimate= .fitted)
+metrics(data = pred_modelo_inicial_robusto, truth = peso, estimate= .fitted)
+```
+Con el ajuste robusto se pueden detectar outliers mirando aquellas observaciones cuyos pesos (robustos) asignados por el ajuste de __lmrob__ sean muy chicos (pesos cero o muy cercanos a él). 
+```{r}
+summary(modelo_inicial_robusto)
+```
+En este caso se detectaron 62 observaciones como outliers.
+
+Ahora bien, si comparamos las métricas de ambos modelos, el _RMSE_ es mayor en 0.0005 y el _MAE_ es mayor en 0.1115 en el _modelo con outliers_ respecto del _modelo robusto_. Es decir que las medidas de performance dan casi similares, es solo infimamente mejor en el _modelo robusto_.
+Entonces, en este caso se puede concluir que la presencia de outliers no afectó demasiado al modelo original (que es no robusto).
+
+
+
+########## -
+
+
+
+
+
+
+
